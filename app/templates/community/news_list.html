@@ -1,0 +1,58 @@
+{% extends "layout/base.html" %}
+
+{% block header %}Módulo Comunidad - Noticias{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h3 class="text-2xl font-bold text-gray-700">Tablero de Noticias</h3>
+    
+    <!-- BOTÓN SOLO VISIBLE SI TIENE PERMISO DE ESCRITURA (NIVEL 2) -->
+    {% if can_edit %}
+    <a href="{{ url_for('comunidad.create_news') }}" 
+       class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center">
+        <i class="ph ph-plus-circle text-xl mr-2"></i> Nueva Noticia
+    </a>
+    {% endif %}
+</div>
+
+<div class="grid grid-cols-1 gap-6">
+    {% for post in news %}
+    <div class="bg-white rounded-lg shadow-md overflow-hidden border-l-4 {{ 'border-red-500' if post.is_important else 'border-blue-500' }}">
+        <div class="p-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    {% if post.is_important %}
+                    <span class="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full uppercase font-semibold tracking-wide mb-2">Importante</span>
+                    {% endif %}
+                    <h4 class="text-xl font-bold text-gray-800">{{ post.title }}</h4>
+                    <p class="text-sm text-gray-500 mb-4">
+                        Publicado por <span class="font-semibold">{{ post.author.username }}</span> el {{ post.date_posted.strftime('%d-%m-%Y') }}
+                    </p>
+                </div>
+                
+                <!-- ACCIONES DE EDICIÓN (SOLO NIVEL 2) -->
+                {% if can_edit %}
+                <div class="flex space-x-2">
+                    <a href="{{ url_for('comunidad.edit_news', news_id=post.id) }}" class="text-gray-400 hover:text-blue-600">
+                        <i class="ph ph-pencil-simple text-xl"></i>
+                    </a>
+                    <a href="{{ url_for('comunidad.delete_news', news_id=post.id) }}" 
+                       onclick="return confirm('¿Estás seguro de eliminar esta noticia?')"
+                       class="text-gray-400 hover:text-red-600">
+                        <i class="ph ph-trash text-xl"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <p class="text-gray-600 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-10 text-gray-500">
+        <i class="ph ph-newspaper text-4xl mb-3 block"></i>
+        No hay noticias publicadas aún.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

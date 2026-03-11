@@ -1,0 +1,189 @@
+{% extends "layout/base.html" %}
+{% block header %}Gastos Comunes{% endblock %}
+
+{% block content %}
+<!-- Truco para usar la fecha actual en el campo oculto del modal -->
+
+
+<!-- Tarjeta de Resumen -->
+<div class="mb-6 bg-white p-4 rounded-lg shadow border-l-4 border-red-500 flex justify-between items-center">
+    <div>
+        <h4 class="text-gray-500 uppercase text-xs font-bold">Deuda Total Pendiente</h4>
+        <p class="text-2xl font-bold text-gray-800">${{ total_debt }}</p>
+    </div>
+    {% if can_edit %}
+    <button onclick="document.getElementById('modalExpense').classList.remove('hidden')" 
+            class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded font-bold shadow">
+        + Generar Cobro
+    </button>
+    {% endif %}
+</div>
+
+<!-- Tabla de Gastos -->
+<div class="bg-white shadow-md rounded-lg overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead class="bg-gray-800 text-white uppercase text-xs">
+            <tr>
+                <th class="py-3 px-4 text-left">Periodo</th>
+                <th class="py-3 px-4 text-left">Unidad</th>
+                <th class="py-3 px-4 text-left">Descripción</th>
+                <th class="py-3 px-4 text-right">Monto</th>
+                <th class="py-3 px-4 text-center">Estado</th>
+                <th class="py-3 px-4 text-center">Acción</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for expense in expenses %}
+            <tr class="border-b hover:bg-gray-50">
+                <td class="py-3 px-4">{{ expense.period }}</td>
+                <td class="py-3 px-4 font-bold">Depto {{ expense.unit.number }}</td>
+                <td class="py-3 px-4">{{ expense.description }}</td>
+                
+                <!-- COLUMNA MONTO (Muestra saldo si es parcial) -->
+                <td class="py-3 px-4 text-right font-mono">
+                    <div class="font-bold">${{ expense.amount }}</div>
+                    {% if expense.status == 'partial' %}
+                        <div class="text-xs text-red-600 font-bold mt-1">
+                            Faltan: ${{ expense.balance_due }}
+                        </div>
+                    {% endif %}
+                </td>
+
+                <!-- COLUMNA ESTADO -->
+                <td class="py-3 px-4 text-center">
+                    {% if expense.status == 'paid' %}
+                        <span class="bg-green-100 text-green-800 py-1 px-2 rounded-full text-xs font-bold">PAGADO</span>
+                    {% elif expense.status == 'partial' %}
+                        <span class="bg-orange-100 text-orange-800 py-1 px-2 rounded-full text-xs font-bold">ABONO PARCIAL</span>
+                        <div class="text-[10px] text-gray-500 mt-1">
+                            Pagado: ${{ expense.amount_paid }}
+                        </div>
+                    {% else %}
+                        <span class="bg-red-100 text-red-800 py-1 px-2 rounded-full text-xs font-bold">PENDIENTE</span>
+                    {% endif %}
+                </td>
+
+                <!-- COLUMNA ACCIÓN (Botón de Abono Rápido) -->
+                <td class="py-3 px-4 text-center">
+                    {% if expense.status != 'paid' and can_edit %}
+                        <button onclick="openAbonoModal({{ expense.id }}, {{ expense.balance_due }}, '{{ expense.unit.number }}', '{{ expense.description }}')"
+                                class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow">
+                            + Abonar
+                        </button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center py-6">No hay registros financieros.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 1: CREAR GASTO COMÚN NUEVO (Deuda) -->
+<!-- ========================================== -->
+<div id="modalExpense" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Asignar Gasto Común</h3>
+            <form action="{{ url_for('administracion.create_expense') }}" method="POST" class="mt-4 text-left">
+                
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray-700">Unidad</label>
+                    <select name="unit_id" class="w-full border rounded p-2" required>
+                        {% for u in units %}
+                        <option value="{{ u.id }}">Depto {{ u.number }} - {{ u.owner_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray-700">Periodo (Mes/Año)</label>
+                    <input type="month" name="period" required class="w-full border rounded p-2">
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray-700">Descripción</label>
+                    <input type="text" name="description" placeholder="Ej: Gasto Común Marzo" required class="w-full border rounded p-2">
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray-700">Monto Total ($)</label>
+                    <input type="number" name="amount" required class="w-full border rounded p-2">
+                </div>
+
+                <div class="flex justify-between mt-4">
+                    <button type="button" onclick="document.getElementById('modalExpense').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-4 py-2 rounded">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 2: ABONO RÁPIDO (MINI MODAL) -->
+<!-- ========================================== -->
+<div id="modalAbonoRapido" class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+    <div class="relative p-6 border w-80 shadow-2xl rounded-xl bg-white">
+        <h4 class="text-lg font-bold text-center mb-4 text-green-700 border-b pb-2">Registrar Pago</h4>
+        
+        <form action="{{ url_for('administracion.report_payment') }}" method="POST">
+            <!-- Campos ocultos necesarios para el controlador -->
+            <input type="hidden" name="expense_id" id="abono_expense_id">
+            <input type="hidden" name="method" value="Transferencia"> <!-- Por defecto -->
+            <input type="hidden" name="payment_date" value="{{ datetime.now().strftime('%Y-%m-%d') }}">
+            
+            <div class="mb-4 text-center bg-gray-50 p-2 rounded">
+                <div class="text-sm text-gray-600">Unidad: <span id="abono_unit" class="font-bold text-gray-900"></span></div>
+                <div class="text-xs text-gray-500 mt-1" id="abono_desc"></div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-700 mb-1">Monto Recibido ($)</label>
+                <!-- El value se llena por JS con el saldo pendiente, pero el usuario puede editarlo -->
+                <input type="number" name="amount" id="abono_amount" required 
+                       class="w-full border-2 border-green-500 rounded p-2 text-center text-xl font-bold text-green-700 focus:outline-none focus:ring-2 focus:ring-green-600">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-700 mb-1">Nro. Comprobante (Opcional)</label>
+                <input type="text" name="reference" placeholder="Ej: 998877" 
+                       class="w-full border rounded p-2 text-sm">
+            </div>
+
+            <div class="flex justify-between mt-6">
+                <button type="button" onclick="document.getElementById('modalAbonoRapido').classList.add('hidden')" 
+                        class="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-bold hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-green-700 shadow-md">
+                    Confirmar Pago
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- SCRIPTS -->
+<!-- ========================================== -->
+<script>
+    // Función que abre el modal pequeño y rellena los datos
+    function openAbonoModal(expenseId, montoFaltante, unidad, descripcion) {
+        // Llenar campos ocultos e informativos
+        document.getElementById('abono_expense_id').value = expenseId;
+        document.getElementById('abono_unit').textContent = unidad;
+        document.getElementById('abono_desc').textContent = descripcion;
+        
+        // Sugerir el monto exacto que falta por pagar
+        document.getElementById('abono_amount').value = montoFaltante;
+        
+        // Mostrar el modal
+        document.getElementById('modalAbonoRapido').classList.remove('hidden');
+    }
+</script>
+
+{% endblock %}

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CondoManager ERP</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Iconos (Phosphor Icons similar a Edifito) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        /* Transición suave para el sidebar */
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans h-screen flex overflow-hidden">
+
+    <!-- OVERLAY para móvil (oculto por defecto) -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
+
+    <!-- 1. SIDEBAR (Menú Lateral) -->
+    <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 text-white flex flex-col shadow-xl z-30 transform -translate-x-full md:translate-x-0 sidebar-transition">
+        <!-- Logo -->
+        <div class="h-16 flex items-center justify-center border-b border-gray-700">
+            <h1 class="text-xl font-bold text-blue-400 tracking-wider">Condo<span class="text-white">Manager</span></h1>
+        </div>
+
+        <!-- Menú Dinámico -->
+        <nav class="flex-1 overflow-y-auto py-4">
+            
+            <!-- Link al Dashboard General -->
+            <a href="#" class="flex items-center px-6 py-3 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                <i class="ph ph-squares-four text-xl mr-3"></i>
+                <span class="font-medium">Inicio</span>
+            </a>
+
+            <!-- Módulo Super Admin (Solo visible si es admin) -->
+            {% if current_user.is_authenticated and current_user.role.name == 'Super Admin' %}
+            <div class="mt-4 px-6 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Configuración
+            </div>
+            <a href="{{ url_for('superadmin.list_roles') }}" class="flex items-center px-6 py-2 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
+                <i class="ph ph-gear text-xl mr-3"></i>
+                Roles y Permisos
+            </a>
+            {% endif %}
+
+            <!-- BUCLE DEL MENÚ DINÁMICO (Generado en __init__.py) -->
+            {% for module in user_menu %}
+                <div class="mt-6 px-6 mb-2 text-xs font-bold text-blue-400 uppercase tracking-wider">
+                    {{ module.name }}
+                </div>
+                
+                {% for func in module.functions %}
+                {% set link_url = '#' %}
+                {% if func.code == 'noticias' %}
+                    {% set link_url = url_for('comunidad.list_news') %}
+                {% elif func.code == 'incidencias' %}
+                    {% set link_url = url_for('comunidad.list_incidences') %}
+                {% elif func.code == 'paqueteria' %}  <!-- NUEVO -->
+                    {% set link_url = url_for('porteria.list_packages') %}
+                {% elif func.code == 'gastos_comunes' %}
+                    {% set link_url = url_for('administracion.list_expenses') %}
+                {% elif func.code == 'copropietarios' %}
+                    {% set link_url = url_for('administracion.list_units') %}
+                {% elif func.code == 'informe_pagos' %}
+                    {% set link_url = url_for('administracion.list_payments') %}
+                {% elif func.code == 'morosos' %}
+                    {% set link_url = url_for('administracion.list_debtors') %}
+                {% elif func.code == 'presupuesto' %}
+                    {% set link_url = url_for('administracion.view_budget') %}
+                {% elif func.code == 'multas' %}
+                    {% set link_url = url_for('administracion.list_fines') %}
+                {% elif func.code == 'catastro' %}
+                    {% set link_url = url_for('operaciones.list_assets') %}
+                {% elif func.code == 'mantenciones' %}
+                    {% set link_url = url_for('operaciones.list_maintenance') %}
+
+                {% endif %}
+                <!-- Aquí irás agregando más 'elif' para otros módulos -->
+                            
+                <a href="{{ link_url }}" class="flex items-center px-6 py-2 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors group">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gray-600 mr-3 group-hover:bg-blue-400 transition-colors"></span>
+                    {{ func.name }}
+                </a>
+                {% endfor %}
+            {% endfor %}
+
+        </nav>
+
+        <!-- Footer del Sidebar (Usuario) -->
+        <div class="p-4 border-t border-gray-700 bg-gray-900">
+            {% if current_user.is_authenticated %}
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                    {{ current_user.username[0] | upper }}
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-white">{{ current_user.username }}</p>
+                    <p class="text-xs text-gray-400">{{ current_user.role.name }}</p>
+                </div>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="mt-3 block text-center text-xs text-red-400 hover:text-red-300">
+                Cerrar Sesión
+            </a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="block text-center text-blue-400 hover:underline">Iniciar Sesión</a>
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- 2. CONTENIDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50">
+        <!-- Header Superior -->
+        <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10">
+            <!-- Botón Hamburguesa (visible solo en móvil) -->
+            <button id="menuBtn" class="p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none md:hidden">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+            <h2 class="text-lg font-semibold text-gray-700">
+                {% block header %}Panel de Control{% endblock %}
+            </h2>
+            <!-- Espacio vacío para equilibrar el flex (opcional) -->
+            <div class="w-8 md:hidden"></div>
+        </header>
+
+        <!-- Área de Contenido Scrollable -->
+        <div class="flex-1 overflow-y-auto p-6">
+            
+            <!-- Mensajes Flash (Alertas) -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg shadow-sm border-l-4 
+                        {{ 'bg-red-100 border-red-500 text-red-700' if category == 'error' else 'bg-green-100 border-green-500 text-green-700' }}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Bloque principal de contenido -->
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Script para el menú hamburguesa -->
+    <script>
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+
+        function openMenu() {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden'); // Evita scroll del fondo
+        }
+
+        function closeMenu() {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        menuBtn.addEventListener('click', openMenu);
+
+        overlay.addEventListener('click', closeMenu);
+
+        // Cerrar menú al redimensionar a desktop (por si acaso)
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768) { // md breakpoint
+                closeMenu();
+                // Asegurar que en desktop el sidebar esté visible
+                sidebar.classList.remove('-translate-x-full');
+            } else {
+                // En móvil, asegurar que empiece oculto
+                sidebar.classList.add('-translate-x-full');
+            }
+        });
+
+        // Inicializar estado según tamaño de pantalla
+        if (window.innerWidth < 768) {
+            sidebar.classList.add('-translate-x-full');
+        } else {
+            sidebar.classList.remove('-translate-x-full');
+        }
+    </script>
+</body>
+</html>

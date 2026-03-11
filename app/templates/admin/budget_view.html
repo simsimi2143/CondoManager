@@ -1,0 +1,140 @@
+{% extends "layout/base.html" %}
+{% block header %}Control Presupuestario{% endblock %}
+
+{% block content %}
+
+<!-- FILTRO DE PERIODO -->
+<div class="flex justify-between items-center mb-6">
+    <form action="" method="GET" class="flex items-center bg-white p-2 rounded shadow">
+        <label class="mr-2 text-sm font-bold text-gray-600">Periodo:</label>
+        <input type="month" name="period" value="{{ period }}" onchange="this.form.submit()" 
+               class="border rounded p-1 text-sm">
+    </form>
+    
+    {% if can_edit %}
+    <button onclick="document.getElementById('modalCategory').classList.remove('hidden')" 
+            class="text-blue-600 hover:text-blue-800 font-bold text-sm flex items-center">
+        <i class="ph ph-plus mr-1"></i> Nueva Categoría
+    </button>
+    {% endif %}
+</div>
+
+<!-- TARJETAS DE RESUMEN -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+        <h4 class="text-xs font-bold text-gray-500 uppercase">Presupuestado</h4>
+        <p class="text-2xl font-black text-blue-600">${{ "{:,.0f}".format(totals.planned) }}</p>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+        <h4 class="text-xs font-bold text-gray-500 uppercase">Ejecutado (Real)</h4>
+        <p class="text-2xl font-black text-purple-600">${{ "{:,.0f}".format(totals.executed) }}</p>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow border-l-4 {{ 'border-green-500' if totals.planned >= totals.executed else 'border-red-500' }}">
+        <h4 class="text-xs font-bold text-gray-500 uppercase">Desviación</h4>
+        <p class="text-2xl font-black {{ 'text-green-600' if totals.planned >= totals.executed else 'text-red-600' }}">
+            ${{ "{:,.0f}".format(totals.planned - totals.executed) }}
+        </p>
+    </div>
+</div>
+
+<!-- TABLA DE DETALLE -->
+<div class="bg-white shadow-xl rounded-xl overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead class="bg-gray-100 text-gray-700 uppercase text-xs font-bold">
+            <tr>
+                <th class="py-3 px-6 text-left">Ítem / Categoría</th>
+                <th class="py-3 px-6 text-right">Presupuesto</th>
+                <th class="py-3 px-6 text-right">Gasto Real</th>
+                <th class="py-3 px-6 text-center w-1/3">Progreso</th>
+                <th class="py-3 px-6 text-center">Acción</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for item in budget_data %}
+            <tr class="hover:bg-gray-50 group">
+                <td class="py-3 px-6 font-bold text-gray-800">{{ item.category.name }}</td>
+                <td class="py-3 px-6 text-right text-gray-600">${{ "{:,.0f}".format(item.planned) }}</td>
+                <td class="py-3 px-6 text-right font-bold {{ 'text-red-600' if item.is_over else 'text-gray-800' }}">
+                    ${{ "{:,.0f}".format(item.executed) }}
+                </td>
+                
+                <!-- BARRA DE PROGRESO VISUAL -->
+                <td class="py-3 px-6">
+                    <div class="flex items-center">
+                        <div class="flex-1 bg-gray-200 rounded-full h-2.5 mr-2">
+                            <div class="h-2.5 rounded-full {{ 'bg-red-600' if item.is_over else 'bg-green-500' }}" 
+                                 style="width: {{ item.percent }}%"></div>
+                        </div>
+                        <span class="text-xs font-bold {{ 'text-red-600' if item.is_over else 'text-green-600' }}">
+                            {{ "{:.0f}".format(item.percent) }}%
+                        </span>
+                    </div>
+                </td>
+
+                <td class="py-3 px-6 text-center">
+                    {% if can_edit %}
+                    <button onclick="openEditModal('{{ item.category.id }}', '{{ item.category.name }}', '{{ item.planned }}', '{{ item.executed }}')" 
+                            class="text-blue-600 hover:bg-blue-100 p-1 rounded">
+                        <i class="ph ph-pencil-simple"></i>
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center py-8 text-gray-400">No hay categorías definidas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- MODAL CREAR CATEGORÍA -->
+<div id="modalCategory" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-80">
+        <h3 class="font-bold mb-4">Nueva Categoría</h3>
+        <form action="{{ url_for('administracion.create_budget_category') }}" method="POST">
+            <input type="text" name="name" placeholder="Ej: Jardinería" class="w-full border p-2 rounded mb-4" required>
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('modalCategory').classList.add('hidden')" class="px-3 py-1 bg-gray-200 rounded">Cancelar</button>
+                <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL EDITAR MONTOS -->
+<div id="modalEdit" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h3 class="font-bold mb-2 text-lg">Editar: <span id="catName" class="text-blue-600"></span></h3>
+        <p class="text-xs text-gray-500 mb-4">Periodo: {{ period }}</p>
+        
+        <form method="POST">
+            <input type="hidden" name="category_id" id="catId">
+            
+            <div class="mb-3">
+                <label class="block text-xs font-bold mb-1">Presupuesto (Planificado)</label>
+                <input type="number" name="planned" id="catPlanned" class="w-full border p-2 rounded">
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-bold mb-1">Gasto Real (Ejecutado)</label>
+                <input type="number" name="executed" id="catExecuted" class="w-full border p-2 rounded">
+            </div>
+            
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('modalEdit').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded">Cancelar</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded font-bold">Actualizar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditModal(id, name, planned, executed) {
+    document.getElementById('catId').value = id;
+    document.getElementById('catName').innerText = name;
+    document.getElementById('catPlanned').value = planned;
+    document.getElementById('catExecuted').value = executed;
+    document.getElementById('modalEdit').classList.remove('hidden');
+}
+</script>
+
+{% endblock %}

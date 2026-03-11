@@ -1,0 +1,104 @@
+{% extends "layout/base.html" %}
+{% block header %}Plan de Mantenciones{% endblock %}
+
+{% block content %}
+
+<!-- Botón Crear (Solo Nivel 2) -->
+{% if can_edit %}
+<div class="mb-6 flex justify-end">
+    <button onclick="document.getElementById('modalMaint').classList.remove('hidden')" 
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow flex items-center">
+        <i class="ph ph-calendar-plus text-xl mr-2"></i> Programar Mantención
+    </button>
+</div>
+{% endif %}
+
+<!-- Sección PENDIENTES -->
+<h3 class="text-xl font-bold text-gray-800 mb-3 flex items-center">
+    <i class="ph ph-clock text-yellow-600 mr-2"></i> Próximas Mantenciones
+</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {% for task in pending %}
+    <div class="bg-white rounded-lg shadow border-l-4 {{ 'border-red-500' if task.scheduled_date < today else 'border-blue-500' }} p-4 relative">
+        
+        <!-- Fecha -->
+        <div class="absolute top-4 right-4 text-center">
+            <span class="block text-2xl font-bold text-gray-700">{{ task.scheduled_date.day }}</span>
+            <span class="block text-xs uppercase font-bold text-gray-500">{{ task.scheduled_date.strftime('%b') }}</span>
+        </div>
+
+        <h4 class="text-lg font-bold text-gray-800 pr-10">{{ task.asset.name }}</h4>
+        <p class="text-blue-600 font-medium text-sm mb-2">{{ task.title }}</p>
+        
+        <p class="text-xs text-gray-500 mb-4">
+            <i class="ph ph-user-gear mr-1"></i> {{ task.provider or 'Interno' }}
+        </p>
+
+        {% if task.scheduled_date < today %}
+            <p class="text-xs text-red-600 font-bold mb-3">⚠️ Atrasada</p>
+        {% endif %}
+
+        {% if can_edit %}
+        <a href="{{ url_for('operaciones.complete_task', task_id=task.id) }}" 
+           class="block w-full text-center bg-gray-100 hover:bg-green-100 text-green-700 text-xs font-bold py-2 rounded transition-colors border border-gray-200">
+            ✅ Marcar Realizada
+        </a>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="col-span-3 text-center py-6 text-gray-500 bg-white rounded-lg border border-dashed border-gray-300">
+        No hay mantenciones pendientes. ¡Todo al día!
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Sección HISTORIAL -->
+<h3 class="text-lg font-bold text-gray-600 mb-3">Historial Reciente</h3>
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full text-sm">
+        <tbody class="divide-y divide-gray-200">
+            {% for task in history %}
+            <tr class="hover:bg-gray-50 opacity-75">
+                <td class="py-3 px-4 text-green-700 font-bold"><i class="ph ph-check-circle"></i> Realizada</td>
+                <td class="py-3 px-4 font-bold">{{ task.asset.name }}</td>
+                <td class="py-3 px-4">{{ task.title }}</td>
+                <td class="py-3 px-4 text-gray-500 text-right">{{ task.completed_date.strftime('%d/%m/%Y') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- MODAL -->
+<div id="modalMaint" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-bold text-center mb-4">Programar Nueva Tarea</h3>
+        <form action="{{ url_for('operaciones.create_maintenance') }}" method="POST">
+            <div class="mb-3">
+                <label class="block text-xs font-bold text-gray-700">Equipo / Activo</label>
+                <select name="asset_id" class="w-full border rounded p-2" required>
+                    {% for a in assets %}
+                    <option value="{{ a.id }}">{{ a.name }} ({{ a.location }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-bold text-gray-700">Tarea a realizar</label>
+                <input type="text" name="title" placeholder="Ej: Revisión Técnica Mensual" required class="w-full border rounded p-2">
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-bold text-gray-700">Fecha Programada</label>
+                <input type="date" name="scheduled_date" required class="w-full border rounded p-2">
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-bold text-gray-700">Empresa / Técnico</label>
+                <input type="text" name="provider" placeholder="Ej: Otis" class="w-full border rounded p-2">
+            </div>
+            <div class="flex justify-between mt-4">
+                <button type="button" onclick="document.getElementById('modalMaint').classList.add('hidden')" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">Programar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

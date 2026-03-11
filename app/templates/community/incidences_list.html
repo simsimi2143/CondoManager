@@ -1,0 +1,103 @@
+{% extends "layout/base.html" %}
+{% block header %}Reporte de Incidencias y Problemas{% endblock %}
+
+{% block content %}
+
+<!-- 1. FORMULARIO DE REPORTE (Visible si tienes permiso de escritura Nivel 2) -->
+{% if can_edit  %} 
+<!-- Nota: Ocultamos esto al staff para que solo los residentes reporten, o puedes quitar el 'not is_staff' si el conserje tambien reporta -->
+<div class="bg-white p-6 rounded-lg shadow-md mb-8 border-l-4 border-orange-500">
+    <h3 class="text-lg font-bold text-gray-800 mb-4">📢 Reportar Nuevo Problema</h3>
+    <form action="{{ url_for('comunidad.create_incidence') }}" method="POST">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-700">Título Corto</label>
+                <input type="text" name="title" placeholder="Ej: Luz quemada piso 3" required class="w-full border rounded p-2">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700">Prioridad</label>
+                <select name="priority" class="w-full border rounded p-2">
+                    <option value="Baja">Baja (Puede esperar)</option>
+                    <option value="Media" selected>Media</option>
+                    <option value="Alta">Alta (Urgente)</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label class="block text-xs font-bold text-gray-700">Descripción Detallada</label>
+            <textarea name="description" rows="2" placeholder="Describa el problema..." required class="w-full border rounded p-2"></textarea>
+        </div>
+        <button type="submit" class="mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded shadow">
+            Enviar Reporte
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<!-- 2. LISTADO DE INCIDENCIAS -->
+<h3 class="text-xl font-bold text-gray-700 mb-4">
+    {% if is_staff %}Todas las Incidencias del Edificio{% else %}Mis Reportes{% endif %}
+</h3>
+
+<div class="grid grid-cols-1 gap-4">
+    {% for inc in incidences %}
+    <div class="bg-white rounded-lg shadow p-6 relative">
+        <!-- Badge de Estado -->
+        <div class="absolute top-4 right-4">
+            {% if inc.status == 'Pendiente' %}
+                <span class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full">PENDIENTE</span>
+            {% elif inc.status == 'En Revisión' %}
+                <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full">EN REVISIÓN</span>
+            {% elif inc.status == 'Resuelta' %}
+                <span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">RESUELTA</span>
+            {% else %}
+                <span class="bg-gray-100 text-gray-800 text-xs font-bold px-3 py-1 rounded-full">{{ inc.status }}</span>
+            {% endif %}
+        </div>
+
+        <h4 class="text-lg font-bold text-gray-800">{{ inc.title }}</h4>
+        <p class="text-xs text-gray-500 mb-2">
+            Reportado por <span class="font-bold">{{ inc.author.username }}</span> • {{ inc.created_at.strftime('%d/%m/%Y') }} • Prioridad: {{ inc.priority }}
+        </p>
+        <p class="text-gray-700 mb-4 bg-gray-50 p-3 rounded border border-gray-100">{{ inc.description }}</p>
+
+        <!-- Respuesta de Administración -->
+        {% if inc.admin_response %}
+        <div class="mt-4 border-t pt-3">
+            <p class="text-xs font-bold text-blue-600 uppercase">Respuesta Administración:</p>
+            <p class="text-sm text-gray-600 italic">"{{ inc.admin_response }}"</p>
+        </div>
+        {% endif %}
+
+        <!-- FORMULARIO DE GESTIÓN (SOLO STAFF Y NIVEL 2) -->
+        {% if is_staff and can_edit %}
+        <div class="mt-4 border-t pt-4 bg-blue-50 -mx-6 -mb-6 p-4">
+            <form action="{{ url_for('comunidad.manage_incidence', inc_id=inc.id) }}" method="POST" class="flex gap-2 items-end">
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-gray-600">Actualizar Estado</label>
+                    <select name="status" class="w-full text-sm border rounded p-1">
+                        <option value="Pendiente" {% if inc.status=='Pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="En Revisión" {% if inc.status=='En Revisión' %}selected{% endif %}>En Revisión</option>
+                        <option value="Resuelta" {% if inc.status=='Resuelta' %}selected{% endif %}>✅ Resuelta</option>
+                        <option value="Rechazada" {% if inc.status=='Rechazada' %}selected{% endif %}>❌ Rechazada</option>
+                    </select>
+                </div>
+                <div class="flex-[2]">
+                    <label class="block text-xs font-bold text-gray-600">Respuesta / Comentario</label>
+                    <input type="text" name="admin_response" value="{{ inc.admin_response or '' }}" placeholder="Respuesta al residente..." class="w-full text-sm border rounded p-1">
+                </div>
+                <button type="submit" class="bg-blue-600 text-white text-sm font-bold px-4 py-1.5 rounded hover:bg-blue-700">Actualizar</button>
+            </form>
+        </div>
+        {% endif %}
+
+    </div>
+    {% else %}
+    <div class="text-center py-10 text-gray-400">
+        <i class="ph ph-check-circle text-4xl mb-2"></i>
+        <p>No hay incidencias reportadas.</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

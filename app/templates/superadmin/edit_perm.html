@@ -1,0 +1,65 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">Permisos para: <span class="text-blue-600">{{ role.name }}</span></h2>
+    <a href="{{ url_for('superadmin.list_roles') }}" class="text-gray-500 hover:text-gray-700">Volver</a>
+</div>
+
+<form method="POST">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for module in modules %}
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="bg-gray-800 text-white p-3 font-bold uppercase text-sm">
+                Módulo: {{ module.name }}
+            </div>
+            <div class="p-4">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-500 border-b">
+                            <th class="text-left pb-2">Función</th>
+                            <th class="pb-2 text-center">No Acceso (0)</th>
+                            <th class="pb-2 text-center">Lectura (1)</th>
+                            <th class="pb-2 text-center">Escritura (2)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for func in module.functions %}
+                        {% set current_level = current_perms.get(func.id, 0) %}
+                        <tr class="border-b last:border-0 hover:bg-gray-50">
+                            <td class="py-3 font-medium text-gray-700">{{ func.name }}</td>
+                            
+                            <!-- Opción 0 -->
+                            <td class="text-center">
+                                <input type="radio" name="perm_{{ func.id }}" value="0" 
+                                       class="h-4 w-4 text-red-600 focus:ring-red-500"
+                                       {% if current_level == 0 %}checked{% endif %}>
+                            </td>
+                            <!-- Opción 1 -->
+                            <td class="text-center">
+                                <input type="radio" name="perm_{{ func.id }}" value="1" 
+                                       class="h-4 w-4 text-yellow-600 focus:ring-yellow-500"
+                                       {% if current_level == 1 %}checked{% endif %}>
+                            </td>
+                            <!-- Opción 2 -->
+                            <td class="text-center">
+                                <input type="radio" name="perm_{{ func.id }}" value="2" 
+                                       class="h-4 w-4 text-green-600 focus:ring-green-500"
+                                       {% if current_level == 2 %}checked{% endif %}>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mt-6 flex justify-end">
+        <button type="submit" class="bg-blue-600 text-white font-bold py-3 px-8 rounded hover:bg-blue-700 shadow-lg">
+            Guardar Cambios
+        </button>
+    </div>
+</form>
+{% endblock %}

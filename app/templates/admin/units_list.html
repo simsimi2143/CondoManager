@@ -1,0 +1,59 @@
+{% extends "layout/base.html" %}
+{% block header %}Registro de Copropietarios{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    
+    <!-- COLUMNA IZQUIERDA: Formulario de Creación (Solo si tiene permiso Nivel 2) -->
+    {% if can_edit %}
+    <div class="md:col-span-1">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">Nueva Unidad</h3>
+            <form action="{{ url_for('administracion.create_unit') }}" method="POST">
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-gray-700">Número Depto/Casa</label>
+                    <input type="text" name="number" placeholder="Ej: 502" required class="w-full border rounded p-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-gray-700">Propietario</label>
+                    <input type="text" name="owner" placeholder="Nombre completo" required class="w-full border rounded p-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-gray-700">Email Contacto</label>
+                    <input type="email" name="email" placeholder="correo@ejemplo.com" class="w-full border rounded p-2">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded">
+                    Guardar
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- COLUMNA DERECHA: Lista de Unidades -->
+    <div class="md:col-span-2">
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100 text-gray-600 uppercase">
+                    <tr>
+                        <th class="py-3 px-4 text-left">Unidad</th>
+                        <th class="py-3 px-4 text-left">Propietario</th>
+                        <th class="py-3 px-4 text-left">Email</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for u in units %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="py-3 px-4 font-bold text-blue-600">{{ u.number }}</td>
+                        <td class="py-3 px-4">{{ u.owner_name }}</td>
+                        <td class="py-3 px-4 text-gray-500">{{ u.email or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-center py-4">No hay unidades registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

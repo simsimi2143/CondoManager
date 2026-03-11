@@ -1,0 +1,30 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<h2 class="text-2xl font-bold mb-6 text-gray-800">Gestión de Roles</h2>
+<div class="bg-white shadow-md rounded my-6">
+    <table class="min-w-full table-auto">
+        <thead>
+            <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                <th class="py-3 px-6 text-left">Rol</th>
+                <th class="py-3 px-6 text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="text-gray-600 text-sm font-light">
+            {% for role in roles %}
+            <tr class="border-b border-gray-200 hover:bg-gray-100">
+                <td class="py-3 px-6 text-left whitespace-nowrap">
+                    <span class="font-medium">{{ role.name }}</span>
+                </td>
+                <td class="py-3 px-6 text-center">
+                    <a href="{{ url_for('superadmin.manage_permissions', role_id=role.id) }}" 
+                       class="bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600">
+                        Configurar Permisos
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

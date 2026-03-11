@@ -1,0 +1,33 @@
+{% extends "layout/base.html" %}
+{% block header %}Registrar Nuevo Paquete{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
+    <form method="POST">
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Unidad / Depto</label>
+            <input type="text" name="unit" placeholder="Ej: 502, B-101" required
+                   class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 uppercase">
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Nombre Destinatario</label>
+            <input type="text" name="recipient" placeholder="Nombre de quien aparece en la caja" required
+                   class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="mb-6">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Empresa de Envío / Tipo</label>
+            <select name="company" class="w-full px-3 py-2 border rounded-lg bg-white">
+                <option value="Amazon">Amazon</option>
+                <option value="MercadoLibre">MercadoLibre</option>
+                <option value="Starken">Starken</option>
+                <option value="Correos">Correos</option>
+                <option value="Delivery Comida">Delivery Comida</option>
+                <option value="Otro">Otro</option>
+            </select>
+        </div>
+        <div class="flex justify-end space-x-3">
+            <a href="{{ url_for('porteria.list_packages') }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Volver</a>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">Registrar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

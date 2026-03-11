@@ -1,0 +1,91 @@
+{% extends "layout/base.html" %}
+{% block header %}Registro de Multas e Infracciones{% endblock %}
+
+{% block content %}
+
+<!-- Botón Crear (Solo Nivel 2) -->
+{% if can_edit %}
+<div class="mb-6 flex justify-end">
+    <button onclick="document.getElementById('modalFine').classList.remove('hidden')" 
+            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow flex items-center">
+        <i class="ph ph-gavel text-xl mr-2"></i> Cursar Multa
+    </button>
+</div>
+{% endif %}
+
+<div class="bg-white shadow-md rounded-lg overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead class="bg-gray-100 text-gray-700 uppercase border-b-2 border-gray-200">
+            <tr>
+                <th class="py-3 px-4 text-left">Fecha</th>
+                <th class="py-3 px-4 text-left">Unidad Infractora</th>
+                <th class="py-3 px-4 text-left">Motivo / Causa</th>
+                <th class="py-3 px-4 text-right">Monto</th>
+                <th class="py-3 px-4 text-center">Estado</th>
+                <th class="py-3 px-4 text-center">Acción</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for fine in fines %}
+            <tr class="hover:bg-red-50 transition-colors">
+                <td class="py-3 px-4">{{ fine.date_created.strftime('%d/%m/%Y') }}</td>
+                <td class="py-3 px-4 font-bold text-gray-800">Depto {{ fine.unit.number }}</td>
+                <td class="py-3 px-4 text-red-600 font-medium">{{ fine.reason }}</td>
+                <td class="py-3 px-4 text-right font-mono font-bold">${{ fine.amount }}</td>
+                <td class="py-3 px-4 text-center">
+                    {% if fine.status == 'paid' %}
+                        <span class="bg-green-100 text-green-800 py-1 px-2 rounded font-bold text-xs">PAGADA</span>
+                    {% else %}
+                        <span class="bg-red-100 text-red-800 py-1 px-2 rounded font-bold text-xs">IMPAGA</span>
+                    {% endif %}
+                </td>
+                <td class="py-3 px-4 text-center">
+                    {% if fine.status == 'pending' and can_edit %}
+                    <a href="{{ url_for('administracion.pay_fine', fine_id=fine.id) }}" 
+                       class="text-blue-600 hover:text-blue-800 text-xs font-bold border border-blue-600 px-2 py-1 rounded hover:bg-blue-50"
+                       onclick="return confirm('¿Confirmar pago de esta multa?')">
+                       Registrar Pago
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center py-8 text-gray-400">No hay multas registradas. ¡Buena conducta!</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- MODAL CREAR MULTA -->
+<div id="modalFine" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">Cursar Infracción</h3>
+        <form action="{{ url_for('administracion.create_fine') }}" method="POST">
+            <div class="mb-3">
+                <label class="block text-xs font-bold text-gray-700">Unidad</label>
+                <select name="unit_id" class="w-full border rounded p-2" required>
+                    {% for u in units %}
+                    <option value="{{ u.id }}">Depto {{ u.number }} - {{ u.owner_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-bold text-gray-700">Motivo</label>
+                <input type="text" name="reason" placeholder="Ej: Ruidos molestos 3AM" required class="w-full border rounded p-2">
+            </div>
+            <div class="mb-3">
+                <label class="block text-xs font-bold text-gray-700">Monto Multa ($)</label>
+                <input type="number" name="amount" required class="w-full border rounded p-2">
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-700">Fecha Infracción</label>
+                <input type="date" name="date_created" required class="w-full border rounded p-2">
+            </div>
+            <div class="flex justify-between">
+                <button type="button" onclick="document.getElementById('modalFine').classList.add('hidden')" class="bg-gray-300 px-4 py-2 rounded font-bold text-gray-700">Cancelar</button>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
