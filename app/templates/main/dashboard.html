@@ -1,0 +1,94 @@
+{% extends "layout/base.html" %}
+
+{% block header %}Panel de Inicio{% endblock %}
+
+{% block content %}
+
+<!-- SALUDO DE BIENVENIDA -->
+<div class="mb-8">
+    <h2 class="text-3xl font-bold text-gray-800">
+        ¡Bienvenido/a, <span class="text-blue-600">{{ current_user.username | capitalize }}</span>!
+    </h2>
+    <p class="text-gray-600 mt-2 text-lg">
+        Gracias por confiar en <span class="font-bold text-blue-900">InfiWebSpA</span> para la gestión de tu comunidad.
+    </p>
+</div>
+
+<!-- TARJETAS DE INFORMACIÓN -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+    <!-- TARJETA 1: ESTADO DEL SERVICIO -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-green-500 hover:shadow-xl transition-shadow">
+        <div class="p-6">
+            <div class="flex items-center mb-4">
+                <div class="bg-green-100 p-3 rounded-full">
+                    <i class="ph ph-check-circle text-2xl text-green-600"></i>
+                </div>
+                <h3 class="ml-4 text-xl font-bold text-gray-800">Estado del Sistema</h3>
+            </div>
+            <p class="text-gray-600">
+                Tu plataforma ERP se encuentra operativa y actualizada a la última versión.
+            </p>
+            <div class="mt-4 flex items-center text-sm font-semibold text-green-600">
+                <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                Operativo 100%
+            </div>
+        </div>
+    </div>
+
+    <!-- TARJETA 2: SOPORTE TÉCNICO -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-blue-600 hover:shadow-xl transition-shadow col-span-1 md:col-span-2">
+        <div class="p-6">
+            <div class="flex items-center mb-4">
+                <div class="bg-blue-100 p-3 rounded-full">
+                    <i class="ph ph-headset text-2xl text-blue-600"></i>
+                </div>
+                <h3 class="ml-4 text-xl font-bold text-gray-800">Soporte InfiWebSpA</h3>
+            </div>
+            
+            <p class="text-gray-600 mb-6">
+                ¿Tienes alguna duda o emergencia técnica? Nuestro equipo de soporte está disponible para ayudarte.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <!-- Correo -->
+                <div class="flex items-center bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <i class="ph ph-envelope-simple text-2xl text-red-500 mr-4"></i>
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase">Correo Electrónico</p>
+                        <a href="mailto:iinfiwebspa.contactanos@gmail.com" class="text-gray-800 font-bold hover:text-blue-600 transition-colors">
+                            iinfiwebspa.contactanos@gmail.com
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Teléfonos -->
+                <div class="flex items-center bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <i class="ph ph-whatsapp-logo text-2xl text-green-500 mr-4"></i>
+                    <div>
+                        <p class="text-xs font-bold text-gray-500 uppercase">Teléfonos / WhatsApp</p>
+                        <div class="flex flex-col">
+                            <a href="tel:+56920368688" class="text-gray-800 font-bold hover:text-green-600 transition-colors">
+                                +569 2036 8688
+                            </a>
+                            <a href="tel:+56989096758" class="text-gray-800 font-bold hover:text-green-600 transition-colors">
+                                +569 8909 6758
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pie de página visual -->
+<div class="mt-12 text-center border-t border-gray-200 pt-6">
+    <p class="text-gray-400 text-sm">
+        &copy; 2026 InfiWebSpA - Soluciones Tecnológicas para Condominios.
+    </p>
+</div>
+
+{% endblock %}

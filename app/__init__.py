@@ -23,6 +23,8 @@ def create_app():
         return User.query.get(int(user_id))
     
     # Blueprints
+    from app.routes.main import main_bp
+    
     from app.routes.superadmin import superadmin_bp
     from app.routes.auth import auth_bp
     # ... (debajo de auth_bp)
@@ -34,7 +36,7 @@ def create_app():
         # ... debajo de admin_bp
     from app.routes.operations import ops_bp
     
-    
+    app.register_blueprint(main_bp)
     app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(community_bp, url_prefix='/comunidad') # <--- Registrar

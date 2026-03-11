@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.database.db import db
-from app.models.admin_models import Unit, Expense, Payment, Fine, BudgetCategory, BudgetEntry
+from app.models.admin_models import Unit, Expense, Payment, Fine, BudgetCategory, BudgetEntry, Payroll, BankTransaction, SystemAdjustment 
 from app.utils.decorators import permission_required
 from datetime import datetime
 
@@ -374,3 +374,163 @@ def create_budget_category():
             db.session.commit()
             flash('Categoría creada.', 'success')
     return redirect(request.referrer)
+
+# ==========================================
+# 7. REMUNERACIONES Y SUELDOS
+# ==========================================
+
+@admin_bp.route('/remuneraciones')
+@login_required
+@permission_required('remuneraciones', 1)
+def list_payrolls():
+    period = request.args.get('period', datetime.now().strftime('%Y-%m'))
+    
+    payrolls = Payroll.query.filter_by(period=period).all()
+    
+    total_liquid = sum(p.liquid_salary for p in payrolls)
+    
+    can_edit = current_user.has_permission('remuneraciones', 2)
+    
+    return render_template('admin/payroll_list.html', 
+                           payrolls=payrolls, 
+                           period=period,
+                           total_liquid=total_liquid,
+                           can_edit=can_edit)
+
+@admin_bp.route('/remuneraciones/nuevo', methods=['POST'])
+@login_required
+@permission_required('remuneraciones', 2)
+def create_payroll():
+    name = request.form.get('name')
+    rut = request.form.get('rut')
+    position = request.form.get('position')
+    base = int(request.form.get('base'))
+    bonus = int(request.form.get('bonus') or 0)
+    deduction = int(request.form.get('deduction') or 0)
+    bank = request.form.get('bank')
+    account = request.form.get('account')
+    period = request.form.get('period')
+    
+    # Crear registro
+    payroll = Payroll(
+        employee_name=name, rut=rut, position=position,
+        period=period, base_salary=base, bonuses=bonus, deductions=deduction,
+        bank_name=bank, bank_account=account
+    )
+    db.session.add(payroll)
+    db.session.commit()
+    
+    flash('Liquidación registrada exitosamente.', 'success')
+    return redirect(url_for('administracion.list_payrolls', period=period))
+
+@admin_bp.route('/remuneraciones/pagar/<int:payroll_id>')
+@login_required
+@permission_required('remuneraciones', 2)
+def mark_paid_payroll(payroll_id):
+    payroll = Payroll.query.get_or_404(payroll_id)
+    payroll.payment_status = 'paid'
+    db.session.commit()
+    flash(f'Sueldo de {payroll.employee_name} marcado como PAGADO.', 'success')
+    return redirect(request.referrer)
+
+# ==========================================
+# 8. CONCILIACIÓN BANCARIA
+# ==========================================
+
+@admin_bp.route('/conciliacion')
+@login_required
+@permission_required('conciliacion', 1)
+def bank_reconciliation():
+    # 1. Movimientos del SISTEMA
+    # A) Ingresos por Pagos GC
+    incomes = Payment.query.filter_by(status='approved').all()
+    # B) Egresos por Sueldos
+    outflows = Payroll.query.filter_by(payment_status='paid').all()
+    # C) Ajustes / Saldos Iniciales (NUEVO)
+    adjustments = SystemAdjustment.query.all()
+    
+    system_movements = []
+    
+    # ... (El bucle de incomes y outflows que ya tenías sigue igual) ...
+    for inc in incomes:
+        system_movements.append({'date': inc.payment_date, 'desc': f"Pago GC Depto {inc.unit.number}", 'amount': inc.amount, 'type': 'income'})
+    for out in outflows:
+        date_obj = datetime.strptime(out.period + '-28', '%Y-%m-%d').date()
+        system_movements.append({'date': date_obj, 'desc': f"Sueldo {out.employee_name}", 'amount': -out.liquid_salary, 'type': 'outflow'})
+
+    # --- AGREGAMOS LOS AJUSTES A LA LISTA ---
+    for adj in adjustments:
+        system_movements.append({
+            'date': adj.date,
+            'desc': f"⚙️ {adj.description}",
+            'amount': adj.amount,
+            'type': 'adjustment'
+        })
+    # ----------------------------------------
+        
+    system_movements.sort(key=lambda x: x['date'], reverse=True)
+    
+    # 2. Movimientos del BANCO (Igual que antes)
+    bank_movements = BankTransaction.query.order_by(BankTransaction.date.desc()).all()
+    
+    # 3. Calcular Saldos (Ahora incluye ajustes)
+    saldo_sistema = sum(m['amount'] for m in system_movements)
+    saldo_banco = sum(b.amount for b in bank_movements)
+    
+    can_edit = current_user.has_permission('conciliacion', 2)
+    
+    return render_template('admin/reconciliation.html', 
+                           system_movements=system_movements,
+                           bank_movements=bank_movements,
+                           saldo_sistema=saldo_sistema,
+                           saldo_banco=saldo_banco,
+                           can_edit=can_edit)
+
+@admin_bp.route('/conciliacion/agregar', methods=['POST'])
+@login_required
+@permission_required('conciliacion', 2)
+def add_bank_transaction():
+    date_str = request.form.get('date')
+    desc = request.form.get('description')
+    amount = int(request.form.get('amount'))
+    type_trans = request.form.get('type') # 'deposit' o 'withdrawal'
+    
+    final_amount = amount if type_trans == 'deposit' else -amount
+    
+    trans = BankTransaction(
+        date=datetime.strptime(date_str, '%Y-%m-%d'),
+        description=desc,
+        amount=final_amount
+    )
+    db.session.add(trans)
+    db.session.commit()
+    flash('Movimiento bancario registrado.', 'success')
+    return redirect(url_for('administracion.bank_reconciliation'))
+
+@admin_bp.route('/conciliacion/toggle/<int:trans_id>')
+@login_required
+@permission_required('conciliacion', 2)
+def toggle_reconcile(trans_id):
+    trans = BankTransaction.query.get_or_404(trans_id)
+    trans.is_reconciled = not trans.is_reconciled
+    db.session.commit()
+    return redirect(url_for('administracion.bank_reconciliation'))
+
+# --- ESTA ES LA RUTA QUE TE FALTA ---
+@admin_bp.route('/conciliacion/ajuste', methods=['POST'])
+@login_required
+@permission_required('conciliacion', 2)
+def add_system_adjustment():
+    amount = int(request.form.get('amount'))
+    desc = request.form.get('description')
+    date_str = request.form.get('date')
+    
+    adj = SystemAdjustment(
+        amount=amount,
+        description=desc,
+        date=datetime.strptime(date_str, '%Y-%m-%d')
+    )
+    db.session.add(adj)
+    db.session.commit()
+    flash('Ajuste de sistema registrado.', 'success')
+    return redirect(url_for('administracion.bank_reconciliation'))

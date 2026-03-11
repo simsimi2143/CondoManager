@@ -88,3 +88,53 @@ class BudgetEntry(db.Model):
     executed_amount = db.Column(db.Integer, default=0) # Gasto Real
     
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+# apartado de remuneraciones
+
+
+class Payroll(db.Model):
+    __tablename__ = 'payrolls'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    employee_name = db.Column(db.String(100), nullable=False) # Nombre Empleado
+    rut = db.Column(db.String(20), nullable=False) # DNI
+    position = db.Column(db.String(50)) # Cargo (Conserje, Aseador)
+    
+    period = db.Column(db.String(7), nullable=False) # Mes (2023-11)
+    
+    base_salary = db.Column(db.Integer, nullable=False) # Sueldo Base
+    bonuses = db.Column(db.Integer, default=0) # Bonos
+    deductions = db.Column(db.Integer, default=0) # Descuentos
+    
+    # Total Líquido (Calculado)
+    @property
+    def liquid_salary(self):
+        return self.base_salary + self.bonuses - self.deductions
+    
+    payment_status = db.Column(db.String(20), default='pending') # pending, paid
+    
+    bank_account = db.Column(db.String(100)) # Datos para transferencia
+    bank_name = db.Column(db.String(50)) # Banco Estado, Santander, etc.    
+    
+# apartado de conciliacion bancaria
+class BankTransaction(db.Model):
+    __tablename__ = 'bank_transactions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False)
+    description = db.Column(db.String(200), nullable=False)
+    amount = db.Column(db.Integer, nullable=False) # Positivo (Abono) o Negativo (Cargo)
+    
+    # Estado: True = Conciliado (Coincide con sistema), False = Pendiente
+    is_reconciled = db.Column(db.Boolean, default=False)
+    
+    # Tipo: 'cartola' (Manual)
+    source = db.Column(db.String(20), default='manual')    
+
+class SystemAdjustment(db.Model):
+    __tablename__ = 'system_adjustments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, default=datetime.utcnow)
+    description = db.Column(db.String(200), nullable=False) # Ej: "Saldo Inicial al 01/01"
+    amount = db.Column(db.Integer, nullable=False) # Puede ser positivo o negativo

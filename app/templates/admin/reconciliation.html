@@ -1,0 +1,172 @@
+{% extends "layout/base.html" %}
+{% block header %}Conciliación Bancaria{% endblock %}
+
+{% block content %}
+
+<!-- TARJETAS DE SALDOS -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+        <h4 class="text-xs font-bold text-gray-500 uppercase">Saldo en Sistema</h4>
+        <p class="text-2xl font-black text-blue-600">${{ "{:,.0f}".format(saldo_sistema) }}</p>
+        <p class="text-xs text-gray-400">Calculado según recibos y pagos</p>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+        <h4 class="text-xs font-bold text-gray-500 uppercase">Saldo en Banco (Cartola)</h4>
+        <p class="text-2xl font-black text-purple-600">${{ "{:,.0f}".format(saldo_banco) }}</p>
+        <p class="text-xs text-gray-400">Registrado manualmente</p>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow border-l-4 {{ 'border-green-500' if saldo_sistema == saldo_banco else 'border-red-500' }}">
+        <h4 class="text-xs font-bold text-gray-500 uppercase">Diferencia</h4>
+        <p class="text-2xl font-black {{ 'text-green-600' if saldo_sistema == saldo_banco else 'text-red-600' }}">
+            ${{ "{:,.0f}".format(saldo_banco - saldo_sistema) }}
+        </p>
+        <p class="text-xs text-gray-400">Debe ser $0 para estar cuadrado</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    
+    <!-- COLUMNA IZQUIERDA: MOVIMIENTOS DEL SISTEMA -->
+    <div class="bg-white shadow rounded-lg p-4">
+        <div class="flex justify-between items-center border-b pb-2 mb-4">
+    <h3 class="font-bold text-gray-700">🖥️ Registros Internos </h3>
+    {% if can_edit %}
+    <button onclick="document.getElementById('modalAdjust').classList.remove('hidden')" 
+            class="bg-gray-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-gray-700">
+        + Saldo Inicial / Ajuste
+    </button>
+    {% endif %}
+</div>
+        <div class="overflow-y-auto max-h-[500px]">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="text-left text-gray-500">
+                        <th class="pb-2">Fecha</th>
+                        <th class="pb-2">Descripción</th>
+                        <th class="pb-2 text-right">Monto</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for mov in system_movements %}
+                    <tr>
+                        <td class="py-2 text-gray-500">{{ mov.date.strftime('%d/%m') }}</td>
+                        <td class="py-2 font-medium">{{ mov.desc }}</td>
+                        <td class="py-2 text-right font-bold {{ 'text-green-600' if mov.amount > 0 else 'text-red-600' }}">
+                            ${{ "{:,.0f}".format(mov.amount) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-center py-4 text-gray-400">Sin movimientos</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- COLUMNA DERECHA: MOVIMIENTOS DEL BANCO -->
+    <div class="bg-white shadow rounded-lg p-4 border-t-4 border-purple-500">
+        <div class="flex justify-between items-center border-b pb-2 mb-4">
+            <h3 class="font-bold text-gray-700">🏦 Cartola Bancaria Real</h3>
+            {% if can_edit %}
+            <button onclick="document.getElementById('modalBank').classList.remove('hidden')" class="bg-purple-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-purple-700">
+                + Agregar Línea
+            </button>
+            {% endif %}
+        </div>
+        
+        <div class="overflow-y-auto max-h-[500px]">
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="text-left text-gray-500">
+                        <th class="pb-2 w-8">Ok</th>
+                        <th class="pb-2">Fecha</th>
+                        <th class="pb-2">Descripción</th>
+                        <th class="pb-2 text-right">Monto</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    {% for bank in bank_movements %}
+                    <tr class="{{ 'bg-green-50' if bank.is_reconciled else '' }}">
+                        <td class="py-2 text-center">
+                            {% if can_edit %}
+                            <a href="{{ url_for('administracion.toggle_reconcile', trans_id=bank.id) }}" 
+                               class="block w-4 h-4 border rounded {{ 'bg-green-500 border-green-500' if bank.is_reconciled else 'border-gray-300' }}">
+                            </a>
+                            {% endif %}
+                        </td>
+                        <td class="py-2 text-gray-500">{{ bank.date.strftime('%d/%m') }}</td>
+                        <td class="py-2 font-medium">{{ bank.description }}</td>
+                        <td class="py-2 text-right font-bold {{ 'text-green-600' if bank.amount > 0 else 'text-red-600' }}">
+                            ${{ "{:,.0f}".format(bank.amount) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center py-4 text-gray-400">Cartola vacía</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL AGREGAR MOVIMIENTO BANCARIO -->
+<div id="modalBank" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-80">
+        <h3 class="font-bold mb-4 text-purple-700">Registrar Movimiento Cartola</h3>
+        <form action="{{ url_for('administracion.add_bank_transaction') }}" method="POST">
+            <div class="mb-3">
+                <label class="text-xs font-bold block mb-1">Fecha</label>
+                <input type="date" name="date" required class="w-full border p-2 rounded">
+            </div>
+            <div class="mb-3">
+                <label class="text-xs font-bold block mb-1">Descripción Cartola</label>
+                <input type="text" name="description" placeholder="Ej: Trx. 123456" required class="w-full border p-2 rounded">
+            </div>
+            <div class="mb-3">
+                <label class="text-xs font-bold block mb-1">Tipo</label>
+                <select name="type" class="w-full border p-2 rounded">
+                    <option value="deposit">Abono (Ingreso +)</option>
+                    <option value="withdrawal">Cargo (Egreso -)</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold block mb-1">Monto ($)</label>
+                <input type="number" name="amount" required class="w-full border p-2 rounded">
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('modalBank').classList.add('hidden')" class="px-3 py-1 bg-gray-200 rounded">Cancelar</button>
+                <button type="submit" class="px-3 py-1 bg-purple-600 text-white rounded font-bold">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Y AGREGA ESTE MODAL AL FINAL DEL ARCHIVO (Junto al otro modal) -->
+<div id="modalAdjust" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-80">
+        <h3 class="font-bold mb-4 text-gray-700">Ajuste de Saldo Sistema</h3>
+        <p class="text-xs text-gray-500 mb-4">Úselo para ingresar el Saldo Inicial o correcciones de caja.</p>
+        
+        <form action="{{ url_for('administracion.add_system_adjustment') }}" method="POST">
+            <div class="mb-3">
+                <label class="text-xs font-bold block mb-1">Descripción</label>
+                <input type="text" name="description" value="Saldo Inicial" class="w-full border p-2 rounded">
+            </div>
+            <div class="mb-3">
+                <label class="text-xs font-bold block mb-1">Fecha</label>
+                <input type="date" name="date" required class="w-full border p-2 rounded">
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold block mb-1">Monto ($)</label>
+                <input type="number" name="amount" placeholder="Ej: 2000000" required class="w-full border p-2 rounded">
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button type="button" onclick="document.getElementById('modalAdjust').classList.add('hidden')" class="px-3 py-1 bg-gray-200 rounded">Cancelar</button>
+                <button type="submit" class="px-3 py-1 bg-gray-800 text-white rounded font-bold">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

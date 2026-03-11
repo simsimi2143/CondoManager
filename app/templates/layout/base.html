@@ -31,7 +31,7 @@
         <nav class="flex-1 overflow-y-auto py-4">
             
             <!-- Link al Dashboard General -->
-            <a href="#" class="flex items-center px-6 py-3 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+            <a href="{{ url_for('main.dashboard') }}" class="flex items-center px-6 py-3 text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
                 <i class="ph ph-squares-four text-xl mr-3"></i>
                 <span class="font-medium">Inicio</span>
             </a>
@@ -71,6 +71,10 @@
                     {% set link_url = url_for('administracion.list_debtors') %}
                 {% elif func.code == 'presupuesto' %}
                     {% set link_url = url_for('administracion.view_budget') %}
+                {% elif func.code == 'remuneraciones' %}
+                    {% set link_url = url_for('administracion.list_payrolls') %}
+                {% elif func.code == 'conciliacion' %}
+                    {% set link_url = url_for('administracion.bank_reconciliation') %}
                 {% elif func.code == 'multas' %}
                     {% set link_url = url_for('administracion.list_fines') %}
                 {% elif func.code == 'catastro' %}
